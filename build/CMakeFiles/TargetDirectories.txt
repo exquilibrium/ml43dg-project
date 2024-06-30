@@ -1,0 +1,17 @@
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/PreprocessMesh.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/SampleVisibleMeshSurface.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/edit_cache.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/rebuild_cache.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/list_install_components.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/install.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/install/local.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/CMakeFiles/install/strip.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/cnpy.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/cnpy-static.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/example1.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/edit_cache.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/rebuild_cache.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/list_install_components.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/install.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/install/local.dir
+/Users/marina/introcs/Python/ml43dg/DeepSDF/build/third-party/cnpy/CMakeFiles/install/strip.dir
