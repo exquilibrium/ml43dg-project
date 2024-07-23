@@ -42,7 +42,10 @@ class Objaverse(torch.utils.data.Dataset):
         sdf_samples = self.get_sdf_samples(sdf_samples_path)
 
         points = sdf_samples[:, :3]
-        sdf = sdf_samples[:, 3:]
+        sdf = sdf_samples[:, 3:4]
+        colors = sdf_samples[:, 4:]
+        # remove alpha channel from colours
+        colors = colors[:, :3]
 
         # truncate sdf values
         sdf_clamped = torch.clamp(sdf, -0.1, 0.1)
@@ -50,7 +53,8 @@ class Objaverse(torch.utils.data.Dataset):
         return {
             "name": item,  # identifier of the shape
             "indices": index,  # index parameter
-            "points": points,  # points, a tensor with shape num_sample_points x 3
+            "points": points,  # points, a tensor with shape num_sample_points x 3,
+            "colors": colors, # RGB colors, a tensor with shape num_sample_points x 4
             "sdf": sdf_clamped  # sdf values, a tensor with shape num_sample_points x 1
         }
 
@@ -83,8 +87,8 @@ class Objaverse(torch.utils.data.Dataset):
         pos_idx = np.random.choice(pos_tensor.shape[0], self.num_sample_points // 2)
         neg_idx = np.random.choice(neg_tensor.shape[0], self.num_sample_points // 2)
 
-        pos_tensor = torch.FloatTensor(pos_tensor[pos_idx])
-        neg_tensor = torch.FloatTensor(neg_tensor[neg_idx])
+        pos_tensor = torch.tensor(pos_tensor[pos_idx], dtype=torch.float32)
+        neg_tensor = torch.tensor(neg_tensor[neg_idx], dtype=torch.float32)
 
         res = torch.vstack((pos_tensor, neg_tensor))
         return res
@@ -114,8 +118,10 @@ class Objaverse(torch.utils.data.Dataset):
         points = samples[:, :3]
 
         # trucate sdf values
-        sdf = torch.clamp(samples[:, 3:], -0.1, 0.1)
+        sdf = torch.clamp(samples[:, 3:4], -0.1, 0.1)
 
-        return points, sdf
+        colors = samples[:, 4:]
+
+        return points, sdf, colors
 
 
