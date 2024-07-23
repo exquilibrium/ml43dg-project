@@ -3,7 +3,7 @@ from pathlib import Path
 import torch
 
 from ml43dg.model.deepsdf import DeepSDFDecoder
-from ml43dg.data.objaverse import Objaverse
+from ml43dg.data.shape_implicit import ShapeImplicit
 from ml43dg.util.misc import evaluate_model_on_grid
 
 
@@ -25,6 +25,7 @@ def train(model, latent_vectors, train_dataloader, device, config):
             'params': latent_vectors.parameters(),
             'lr': config['learning_rate_code']
         }
+        # TODO: add optimizer params and learning rate for colour latent code (lr provided in config)
     ])
 
     # declare learning rate scheduler
@@ -43,7 +44,7 @@ def train(model, latent_vectors, train_dataloader, device, config):
 
         for batch_idx, batch in enumerate(train_dataloader):
             # Move batch to device
-            Objaverse.move_batch_to_device(batch, device)
+            ShapeImplicit.move_batch_to_device(batch, device)
 
             # Zero out previously accumulated gradients
             optimizer.zero_grad()
@@ -56,12 +57,17 @@ def train(model, latent_vectors, train_dataloader, device, config):
             batch_latent_vectors = latent_vectors(batch['indices']).unsqueeze(1).expand(-1, batch['points'].shape[1], -1)
             batch_latent_vectors = batch_latent_vectors.reshape((num_points_per_batch, config['latent_code_length']))
 
+            # TODO: get colour latent codes corresponding to batch shapes
+            # expand so that we have an appropriate latent vector per sdf sample
+
+
             # reshape points and sdf for forward pass
             points = batch['points'].reshape((num_points_per_batch, 3))
             sdf = batch['sdf'].reshape((num_points_per_batch, 1))
 
             # perform forward pass
-            x_in = torch.cat((batch_latent_vectors, points), dim=1)
+            # TODO: concatenate latent codes and colour latent codes with points
+            x_in = torch.cat([batch_latent_vectors, points], dim=1)
             predicted_sdf = model(x_in)
             # truncate predicted sdf between -0.1 and 0.1
             predicted_sdf = torch.clamp(predicted_sdf, -0.1, 0.1)
@@ -74,8 +80,9 @@ def train(model, latent_vectors, train_dataloader, device, config):
             if epoch > 100:
                 loss = loss + code_regularization
 
-            loss.backward()
+            # TODO: regularize colour latent codes
 
+            loss.backward()
             optimizer.step()
 
             # loss logging
@@ -99,6 +106,8 @@ def train(model, latent_vectors, train_dataloader, device, config):
                 # Set model to eval
                 model.eval()
                 latent_vectors_for_vis = latent_vectors(torch.LongTensor(range(min(5, latent_vectors.num_embeddings))).to(device))
+                # TODO: get colour latent codes for visualization
+
                 for latent_idx in range(latent_vectors_for_vis.shape[0]):
                     # create mesh and save to disk
                     evaluate_model_on_grid(model, latent_vectors_for_vis[latent_idx, :], device, 64, f'ml43dg/runs/{config["experiment_name"]}/meshes/{iteration:05d}_{latent_idx:03d}.obj')
@@ -138,7 +147,7 @@ def main(config):
         print('Using CPU')
 
     # create dataloaders
-    train_dataset = Objaverse(config['num_sample_points'], 'train' if not config['is_overfit'] else 'overfit')
+    train_dataset = ShapeImplicit(config['num_sample_points'], 'train' if not config['is_overfit'] else 'overfit')
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,   # Datasets return data one sample at a time; Dataloaders use them and aggregate samples into batches
         batch_size=config['batch_size'],   # The size of batches is defined here
@@ -151,6 +160,10 @@ def main(config):
     model = DeepSDFDecoder(config['latent_code_length'])
     # Instantiate latent vectors for each training shape
     latent_vectors = torch.nn.Embedding(len(train_dataset), config['latent_code_length'], max_norm=1.0)
+    # TODO: Instantiate colour latent vectors for each training shape
+    colour_latent_vectors = torch.nn.Embedding(len(train_dataset), config['latent_code_length'], max_norm=1.0)
+
+    
 
     # Load model if resuming from checkpoint
     if config['resume_ckpt'] is not None:
@@ -162,7 +175,7 @@ def main(config):
     latent_vectors.to(device)
 
     # Create folder for saving checkpoints
-    Path(f'ml43dg/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+    Path(f'exercise_3/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Start training
     train(model, latent_vectors, train_dataloader, device, config)
