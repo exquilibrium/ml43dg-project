@@ -24,6 +24,9 @@ def evaluate_model_on_grid(model, latent_code, colour_latent_code, device, grid_
         sdf_values.append(sdf.detach().cpu())
     sdf_values = torch.cat(sdf_values, dim=0).numpy().reshape((grid_resolution, grid_resolution, grid_resolution))
     if 0 < sdf_values.min() or 0 > sdf_values.max():
+        # TODO: figure out why this is happening
+        # Do the sdf values need to be truncated?
+        # or is it lack of training?
         print("Warning: SDF values are not in the range [0, 1]")
         print(f"max sdf value: {sdf_values.max()}")
         print(f"min sdf value: {sdf_values.min()}")
