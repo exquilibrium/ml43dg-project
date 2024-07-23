@@ -1,5 +1,9 @@
-DeepSDF-exercise/exercise_3/data/sdf_sofas/
-DeepSDF-exercise/exercise_3/runs/
+DeepSDF-exercise/ml43dg/data/sdf_sofas/
+DeepSDF-exercise/ml43dg/data/objaverse/chairs/
+DeepSDF-exercise/ml43dg/data/objaverse/sdf_chairs/
+DeepSDF-exercise/ml43dg/runs/
+
+.DS_STORE
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

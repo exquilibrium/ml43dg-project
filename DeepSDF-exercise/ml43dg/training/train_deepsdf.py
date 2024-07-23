@@ -2,27 +2,26 @@ from pathlib import Path
 
 import torch
 
-from exercise_3.model.deepsdf import DeepSDFDecoder
-from exercise_3.data.shape_implicit import ShapeImplicit
-from exercise_3.util.misc import evaluate_model_on_grid
+from ml43dg.model.deepsdf import DeepSDFDecoder
+from ml43dg.data.objaverse import Objaverse
+from ml43dg.util.misc import evaluate_model_on_grid
 
 
 def train(model, latent_vectors, train_dataloader, device, config):
 
     # Declare loss and move to device
-    # TODO: declare loss as `loss_criterion`
     loss_criterion = torch.nn.L1Loss()
     loss_criterion.to(device)
 
     # declare optimizer
     optimizer = torch.optim.Adam([
         {
-            # TODO: optimizer params and learning rate for model (lr provided in config)
+            # optimizer params and learning rate for model (lr provided in config)
             'params': model.parameters(),
             'lr': config['learning_rate_model']
         },
         {
-            # TODO: optimizer params and learning rate for latent code (lr provided in config)
+            # optimizer params and learning rate for latent code (lr provided in config)
             'params': latent_vectors.parameters(),
             'lr': config['learning_rate_code']
         }
@@ -44,9 +43,9 @@ def train(model, latent_vectors, train_dataloader, device, config):
 
         for batch_idx, batch in enumerate(train_dataloader):
             # Move batch to device
-            ShapeImplicit.move_batch_to_device(batch, device)
+            Objaverse.move_batch_to_device(batch, device)
 
-            # TODO: Zero out previously accumulated gradients
+            # Zero out previously accumulated gradients
             optimizer.zero_grad()
 
             # calculate number of samples per batch (= number of shapes in batch * number of points per shape)
@@ -61,10 +60,10 @@ def train(model, latent_vectors, train_dataloader, device, config):
             points = batch['points'].reshape((num_points_per_batch, 3))
             sdf = batch['sdf'].reshape((num_points_per_batch, 1))
 
-            # TODO: perform forward pass
+            # perform forward pass
             x_in = torch.cat((batch_latent_vectors, points), dim=1)
             predicted_sdf = model(x_in)
-            # TODO: truncate predicted sdf between -0.1 and 0.1
+            # truncate predicted sdf between -0.1 and 0.1
             predicted_sdf = torch.clamp(predicted_sdf, -0.1, 0.1)
 
             # compute loss
@@ -75,10 +74,8 @@ def train(model, latent_vectors, train_dataloader, device, config):
             if epoch > 100:
                 loss = loss + code_regularization
 
-            # TODO: backward
             loss.backward()
 
-            # TODO: update network parameters
             optimizer.step()
 
             # loss logging
@@ -141,7 +138,7 @@ def main(config):
         print('Using CPU')
 
     # create dataloaders
-    train_dataset = ShapeImplicit(config['num_sample_points'], 'train' if not config['is_overfit'] else 'overfit')
+    train_dataset = Objaverse(config['num_sample_points'], 'train' if not config['is_overfit'] else 'overfit')
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,   # Datasets return data one sample at a time; Dataloaders use them and aggregate samples into batches
         batch_size=config['batch_size'],   # The size of batches is defined here
@@ -165,7 +162,7 @@ def main(config):
     latent_vectors.to(device)
 
     # Create folder for saving checkpoints
-    Path(f'exercise_3/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
+    Path(f'ml43dg/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Start training
     train(model, latent_vectors, train_dataloader, device, config)

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import trimesh
 
-from exercise_3.util.misc import remove_nans
+from ml43dg.util.misc import remove_nans
 
 
 class ShapeImplicit(torch.utils.data.Dataset):
