@@ -81,8 +81,8 @@ def preprocess(data_dir, source_dir, source_name, class_directories, number_of_p
 
             try:
 
-                mesh_filenames = list(glob.iglob(class_path + "\\" + instance_id + ext))
-                print(class_path + "\\" + instance_id + ext)
+                mesh_filenames = list(glob.iglob(os.path.join(class_path , instance_id + ext)))
+                print(os.path.join(class_path,instance_id + ext))
                 if len(mesh_filenames) == 0:
                     raise NoMeshFileError()
                 elif len(mesh_filenames) > 1:
@@ -110,12 +110,12 @@ def preprocess(data_dir, source_dir, source_name, class_directories, number_of_p
             target_filepath,
             specific_args,
     ) in meshes_targets_and_specific_args:
-        mesh = trimesh.load(mesh_filepath)
+        mesh = trimesh.load(mesh_filepath, force="mesh")
 
         print(f"Started {count}: {target_filepath}")
 
-        points, sdf = mesh_to_sdf.sample_sdf_near_surface(mesh, number_of_points=number_of_points)
-        reshaped = np.column_stack((points, sdf))
+        points, sdf, colours = mesh_to_sdf.sample_sdf_near_surface(mesh, number_of_points=number_of_points, surface_point_method="sample")
+        reshaped = np.column_stack((points, sdf, colours))
 
         pos = reshaped[reshaped[:, 3] > 0]
         neg = reshaped[reshaped[:, 3] < 0]
