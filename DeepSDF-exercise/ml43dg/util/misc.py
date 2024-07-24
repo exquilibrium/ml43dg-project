@@ -11,24 +11,31 @@ def remove_nans(tensor):
     return tensor[~tensor_nan, :]
 
 
-def evaluate_model_on_grid(model, latent_code, device, grid_resolution, export_path):
+def evaluate_model_on_grid(model, latent_code, colour_latent_code, device, grid_resolution, export_path):
     x_range = y_range = z_range = np.linspace(-1., 1., grid_resolution)
     grid_x, grid_y, grid_z = np.meshgrid(x_range, y_range, z_range, indexing='ij')
     grid_x, grid_y, grid_z = grid_x.flatten(), grid_y.flatten(), grid_z.flatten()
     stacked = torch.from_numpy(np.hstack((grid_x[:, np.newaxis], grid_y[:, np.newaxis], grid_z[:, np.newaxis]))).float().to(device)
     stacked_split = torch.split(stacked, 32 ** 3, dim=0)
     sdf_values = []
-    for points in stacked_split:
+    for points, colours in zip(stacked_split, stacked_split):
         with torch.no_grad():
-            sdf = model(torch.cat([latent_code.unsqueeze(0).expand(points.shape[0], -1), points], 1))
+            sdf = model(torch.cat([latent_code.unsqueeze(0).expand(points.shape[0], -1), colour_latent_code.unsqueeze(0).expand(colours.shape[0], -1), colours, points], 1))
         sdf_values.append(sdf.detach().cpu())
     sdf_values = torch.cat(sdf_values, dim=0).numpy().reshape((grid_resolution, grid_resolution, grid_resolution))
     if 0 < sdf_values.min() or 0 > sdf_values.max():
+        # TODO: figure out why this is happening
+        # Do the sdf values need to be truncated?
+        # or is it lack of training?
+        print("Warning: SDF values are not in the range [0, 1]")
+        print(f"max sdf value: {sdf_values.max()}")
+        print(f"min sdf value: {sdf_values.min()}")
         vertices, faces = [], []
     else:
         vertices, faces, _, _ = marching_cubes(sdf_values, level=0)
     if export_path is not None:
         Path(export_path).parent.mkdir(exist_ok=True)
+        # TODO: also export mesh colours interpolated from the latent code
         trimesh.Trimesh(vertices=vertices, faces=faces).export(export_path)
     return vertices, faces
 

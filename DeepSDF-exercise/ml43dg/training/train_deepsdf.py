@@ -7,7 +7,7 @@ from ml43dg.data.objaverse import Objaverse
 from ml43dg.util.misc import evaluate_model_on_grid
 
 
-def train(model, latent_vectors, train_dataloader, device, config):
+def train(model, latent_vectors, colour_latent_vectors, train_dataloader, device, config):
 
     # Declare loss and move to device
     loss_criterion = torch.nn.L1Loss()
@@ -23,6 +23,11 @@ def train(model, latent_vectors, train_dataloader, device, config):
         {
             # optimizer params and learning rate for latent code (lr provided in config)
             'params': latent_vectors.parameters(),
+            'lr': config['learning_rate_code']
+        },
+        # optimizer params and learning rate for colour latent code (lr same as for shape latent code)
+        {
+            'params': colour_latent_vectors.parameters(),
             'lr': config['learning_rate_code']
         }
     ])
@@ -56,12 +61,19 @@ def train(model, latent_vectors, train_dataloader, device, config):
             batch_latent_vectors = latent_vectors(batch['indices']).unsqueeze(1).expand(-1, batch['points'].shape[1], -1)
             batch_latent_vectors = batch_latent_vectors.reshape((num_points_per_batch, config['latent_code_length']))
 
+            # get colour latent codes corresponding to batch shapes
+            # expand so that we have an appropriate latent vector per sdf sample
+            batch_colour_latent_vectors = colour_latent_vectors(batch['indices']).unsqueeze(1).expand(-1, batch['points'].shape[1], -1)
+            batch_colour_latent_vectors = batch_colour_latent_vectors.reshape((num_points_per_batch, config['color_latent_code_length']))
+
+
             # reshape points and sdf for forward pass
             points = batch['points'].reshape((num_points_per_batch, 3))
             sdf = batch['sdf'].reshape((num_points_per_batch, 1))
+            colours = batch['colors'].reshape((num_points_per_batch, 3))
 
             # perform forward pass
-            x_in = torch.cat((batch_latent_vectors, points), dim=1)
+            x_in = torch.cat([batch_latent_vectors, batch_colour_latent_vectors, points, colours], dim=1)
             predicted_sdf = model(x_in)
             # truncate predicted sdf between -0.1 and 0.1
             predicted_sdf = torch.clamp(predicted_sdf, -0.1, 0.1)
@@ -71,11 +83,12 @@ def train(model, latent_vectors, train_dataloader, device, config):
 
             # regularize latent codes
             code_regularization = torch.mean(torch.norm(batch_latent_vectors, dim=1)) * config['lambda_code_regularization']
+            colour_code_regularization = torch.mean(torch.norm(batch_colour_latent_vectors, dim=1)) * config['lambda_code_regularization']
+
             if epoch > 100:
-                loss = loss + code_regularization
-
+                loss = loss + code_regularization + colour_code_regularization
+            
             loss.backward()
-
             optimizer.step()
 
             # loss logging
@@ -90,6 +103,7 @@ def train(model, latent_vectors, train_dataloader, device, config):
                 if train_loss < best_loss:
                     torch.save(model.state_dict(), f'ml43dg/runs/{config["experiment_name"]}/model_best.ckpt')
                     torch.save(latent_vectors.state_dict(), f'ml43dg/runs/{config["experiment_name"]}/latent_best.ckpt')
+                    torch.save(colour_latent_vectors.state_dict(), f'ml43dg/runs/{config["experiment_name"]}/colour_latent_best.ckpt')
                     best_loss = train_loss
 
                 train_loss_running = 0.
@@ -99,9 +113,11 @@ def train(model, latent_vectors, train_dataloader, device, config):
                 # Set model to eval
                 model.eval()
                 latent_vectors_for_vis = latent_vectors(torch.LongTensor(range(min(5, latent_vectors.num_embeddings))).to(device))
+                colour_latent_vectors_for_vis = colour_latent_vectors(torch.LongTensor(range(min(5, colour_latent_vectors.num_embeddings))).to(device))
+                
                 for latent_idx in range(latent_vectors_for_vis.shape[0]):
                     # create mesh and save to disk
-                    evaluate_model_on_grid(model, latent_vectors_for_vis[latent_idx, :], device, 64, f'ml43dg/runs/{config["experiment_name"]}/meshes/{iteration:05d}_{latent_idx:03d}.obj')
+                    evaluate_model_on_grid(model, latent_vectors_for_vis[latent_idx, :], colour_latent_vectors_for_vis[latent_idx, :], device, 64, f'ml43dg/runs/{config["experiment_name"]}/meshes/{iteration:05d}_{latent_idx:03d}.obj')
                 # set model back to train
                 model.train()
 
@@ -148,21 +164,24 @@ def main(config):
     )
 
     # Instantiate model
-    model = DeepSDFDecoder(config['latent_code_length'])
+    model = DeepSDFDecoder(config['latent_code_length'], config['color_latent_code_length'])
     # Instantiate latent vectors for each training shape
     latent_vectors = torch.nn.Embedding(len(train_dataset), config['latent_code_length'], max_norm=1.0)
-
+    colour_latent_vectors = torch.nn.Embedding(len(train_dataset), config['color_latent_code_length'], max_norm=1.0)
+    
     # Load model if resuming from checkpoint
     if config['resume_ckpt'] is not None:
         model.load_state_dict(torch.load(config['resume_ckpt'] + "_model.ckpt", map_location='cpu'))
         latent_vectors = torch.nn.Embedding.from_pretrained(torch.load(config['resume_ckpt'] + "_latent.ckpt", map_location='cpu'))
+        colour_latent_vectors = torch.nn.Embedding.from_pretrained(torch.load(config['resume_ckpt'] + "_colour_latent.ckpt", map_location='cpu'))
 
     # Move model to specified device
     model.to(device)
     latent_vectors.to(device)
+    colour_latent_vectors.to(device)
 
     # Create folder for saving checkpoints
     Path(f'ml43dg/runs/{config["experiment_name"]}').mkdir(exist_ok=True, parents=True)
 
     # Start training
-    train(model, latent_vectors, train_dataloader, device, config)
+    train(model, latent_vectors, colour_latent_vectors, train_dataloader, device, config)
