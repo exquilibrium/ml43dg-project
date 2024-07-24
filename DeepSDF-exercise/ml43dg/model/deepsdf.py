@@ -10,11 +10,10 @@ class DeepSDFDecoder(nn.Module):
         """
         super().__init__()
         dropout_prob = 0.2
-
-        self.wnll1 = nn.utils.weight_norm(nn.Linear(latent_size+color_latent_size+3+3,512))
+        self.wnll1 = nn.utils.weight_norm(nn.Linear(latent_size+color_latent_size+3+3 + 1,512))
         self.wnll2 = nn.utils.weight_norm(nn.Linear(512,512))
         self.wnll3 = nn.utils.weight_norm(nn.Linear(512,512))
-        self.wnll4 = nn.utils.weight_norm(nn.Linear(512,512-latent_size-color_latent_size-3-3))
+        self.wnll4 = nn.utils.weight_norm(nn.Linear(512,512-latent_size-color_latent_size-3-3 - 1))
 
         self.wnll5 = nn.utils.weight_norm(nn.Linear(512,512))
         self.wnll6 = nn.utils.weight_norm(nn.Linear(512,512))

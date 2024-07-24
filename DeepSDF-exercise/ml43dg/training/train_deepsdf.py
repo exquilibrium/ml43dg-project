@@ -2,9 +2,9 @@ from pathlib import Path
 
 import torch
 
-from ml43dg.model.deepsdf import DeepSDFDecoder
-from ml43dg.data.objaverse import Objaverse
-from ml43dg.util.misc import evaluate_model_on_grid
+from ..model.deepsdf import DeepSDFDecoder
+from ..data.objaverse import Objaverse
+from ..util.misc import evaluate_model_on_grid
 
 
 def train(model, latent_vectors, colour_latent_vectors, train_dataloader, device, config):
@@ -71,9 +71,12 @@ def train(model, latent_vectors, colour_latent_vectors, train_dataloader, device
             points = batch['points'].reshape((num_points_per_batch, 3))
             sdf = batch['sdf'].reshape((num_points_per_batch, 1))
             colours = batch['colors'].reshape((num_points_per_batch, 3))
+            class_label = Objaverse.get_class_id(batch["class_label"])
+
+            class_tensor = torch.full((num_points_per_batch, 1), class_label, dtype=torch.float, device=device)
 
             # perform forward pass
-            x_in = torch.cat([batch_latent_vectors, batch_colour_latent_vectors, points, colours], dim=1)
+            x_in = torch.cat([batch_latent_vectors, batch_colour_latent_vectors, points, colours, class_tensor], dim=1)
             predicted_sdf = model(x_in)
             # truncate predicted sdf between -0.1 and 0.1
             predicted_sdf = torch.clamp(predicted_sdf, -0.1, 0.1)

@@ -11,7 +11,7 @@ class Objaverse(torch.utils.data.Dataset):
     Dataset for loading deep sdf training samples from Objaverse dataset
     """
 
-    dataset_path = Path("ml43dg/data/objaverse/chairs")
+    dataset_path = Path("ml43dg/data/objaverse/")
 
     def __init__(self, num_sample_points, split):
         """
@@ -21,7 +21,7 @@ class Objaverse(torch.utils.data.Dataset):
         assert split in ['train', 'val', 'overfit']
 
         self.num_sample_points = num_sample_points
-        self.items = Path(f"ml43dg/data/splits/chairs/{split}.txt").read_text().splitlines()
+        self.items = Path(f"ml43dg/data/splits/{split}.txt").read_text().splitlines()
 
     def __getitem__(self, index):
         """
@@ -33,10 +33,11 @@ class Objaverse(torch.utils.data.Dataset):
                  "sdf", a num_sample_points x 1 pytorch float32 tensor containing sdf values for the sampled points
         """
         # get uid at index
-        item = self.items[index]
-
+        filename = self.items[index]
+        item_class = filename.split('\\')[0]
+        item = filename.split('\\')[1]
         # get path to sdf data
-        sdf_samples_path = Objaverse.dataset_path / item / "sdf.npz"
+        sdf_samples_path = Objaverse.dataset_path / item_class / item / "sdf.npz"
 
         # read points and their sdf values from disk
         sdf_samples = self.get_sdf_samples(sdf_samples_path)
@@ -55,7 +56,8 @@ class Objaverse(torch.utils.data.Dataset):
             "indices": index,  # index parameter
             "points": points,  # points, a tensor with shape num_sample_points x 3,
             "colors": colors, # RGB colors, a tensor with shape num_sample_points x 4
-            "sdf": sdf_clamped  # sdf values, a tensor with shape num_sample_points x 1
+            "sdf": sdf_clamped,  # sdf values, a tensor with shape num_sample_points x 1
+            "class_label": item_class
         }
 
     def __len__(self):
@@ -73,6 +75,7 @@ class Objaverse(torch.utils.data.Dataset):
         batch['points'] = batch['points'].to(device)
         batch['sdf'] = batch['sdf'].to(device)
         batch['indices'] = batch['indices'].to(device)
+        batch['colors'] = batch['colors'].to(device)
 
     def get_sdf_samples(self, path_to_sdf):
         """
@@ -125,3 +128,16 @@ class Objaverse(torch.utils.data.Dataset):
         return points, sdf, colors
 
 
+    @staticmethod
+    def get_class_id(class_name):
+        match class_name:
+            case "chairs":
+                return 1
+            case "sofas":
+                return 2
+            case "tables":
+                return 3
+            case "vases":
+                return 4
+            case _:
+                return 0
