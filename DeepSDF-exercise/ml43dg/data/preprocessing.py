@@ -43,7 +43,7 @@ class MultipleMeshFileError(Exception):
 
 
 def preprocess(data_dir, source_dir, source_name, class_directories, number_of_points, extension):
-    dest_dir = os.path.join(data_dir, "SdfSamples", source_name)
+    dest_dir = os.path.join(data_dir, source_name)
 
     print(
         "Preprocessing data from "
