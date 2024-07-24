@@ -33,9 +33,11 @@ class SurfacePointCloud:
     def get_random_colored_surface_points(self, count, use_scans=True):
         if use_scans:
             indices = np.random.choice(self.points.shape[0], count)
-            return self.points[indices, :]
+            return self.points[indices, :], indices, self.colors[indices, :]
         else:
-            return trimesh.sample.sample_surface(self.mesh, count, sample_color=True)
+            points, indices, colors = trimesh.sample.sample_surface(self.mesh, count, sample_color=True)
+            # return only the rgb channels, not the fourth and final alpha channel
+            return points, indices, colors[:, :3]
 
     def get_sdf(self, query_points, use_depth_buffer=False, sample_count=11, return_gradients=False):
         if use_depth_buffer:
@@ -113,14 +115,12 @@ class SurfacePointCloud:
     def sample_sdf_near_surface(self, number_of_points=500000, use_scans=True, sign_method='normal', normal_sample_count=11, min_size=0, return_gradients=False):
         query_points = []
         surface_sample_count = int(number_of_points * 47 / 50) // 2
-        colors = np.zeros((number_of_points, 4))
+        colors = np.zeros((number_of_points, 3))
         #surface_points = self.get_random_surface_points(surface_sample_count, use_scans=use_scans)
         surface_points, _, cols = self.get_random_colored_surface_points(surface_sample_count, use_scans=use_scans)
         
         cols = np.tile(cols, (2, 1))
         colors[:cols.shape[0], :] = cols
-        # normalise the colors
-        
 
         query_points.append(surface_points + np.random.normal(scale=0.0025, size=(surface_sample_count, 3)))
         query_points.append(surface_points + np.random.normal(scale=0.00025, size=(surface_sample_count, 3)))
@@ -187,6 +187,7 @@ def create_from_scans(mesh, bounding_radius=1, scan_count=100, scan_resolution=4
     return SurfacePointCloud(mesh, 
         points=np.concatenate([scan.points for scan in scans], axis=0),
         normals=np.concatenate([scan.normals for scan in scans], axis=0) if calculate_normals else None,
+        colors=np.concatenate([scan.colours for scan in scans], axis=0),
         scans=scans
     )
 

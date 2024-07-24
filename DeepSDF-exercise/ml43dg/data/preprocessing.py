@@ -114,7 +114,7 @@ def preprocess(data_dir, source_dir, source_name, class_directories, number_of_p
 
         print(f"Started {count}: {target_filepath}")
 
-        points, sdf, colours = mesh_to_sdf.sample_sdf_near_surface(mesh, number_of_points=number_of_points, surface_point_method="sample")
+        points, sdf, colours = mesh_to_sdf.sample_sdf_near_surface(mesh, number_of_points=number_of_points)
         reshaped = np.column_stack((points, sdf, colours))
 
         pos = reshaped[reshaped[:, 3] > 0]

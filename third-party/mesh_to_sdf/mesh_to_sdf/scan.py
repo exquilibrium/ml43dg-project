@@ -77,6 +77,8 @@ class Scan():
         points /= points[:, 3][:, np.newaxis]
         self.points = points[:, :3]
 
+        self.colours = color[indices[:, 0], indices[:, 1]]
+
         if calculate_normals:
             normals = color[indices[:, 0], indices[:, 1]] / 255 * 2 - 1
             camera_to_points = self.camera_position - self.points
