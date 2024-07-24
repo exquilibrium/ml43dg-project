@@ -3,10 +3,9 @@ from pathlib import Path
 
 import torch
 
-from exercise_3.data.shape_implicit import ShapeImplicit
-from exercise_3.model.deepsdf import DeepSDFDecoder
-from exercise_3.util.misc import evaluate_model_on_grid
-
+from ..data.shape_implicit import ShapeImplicit
+from ..model.deepsdf import DeepSDFDecoder
+from ..util.misc import evaluate_model_on_grid
 
 class InferenceHandlerDeepSDF:
 

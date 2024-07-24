@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import trimesh
 
-from ml43dg.util.misc import remove_nans
+from ..util.misc import remove_nans
 
 
 class Objaverse(torch.utils.data.Dataset):
