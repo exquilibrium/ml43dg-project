@@ -9,8 +9,6 @@ import json
 import logging
 import trimesh
 import numpy as np
-import argparse
-
 
 def append_data_source_map(data_dir, name, source):
     data_source_map_filename = os.path.join(data_dir, ".datasources.json")
@@ -44,10 +42,7 @@ class MultipleMeshFileError(Exception):
     pass
 
 
-def preprocess(data_dir, source_dir, source_name, split_filename, number_of_points, extension):
-    with open(split_filename, "r") as f:
-        split = json.load(f)
-
+def preprocess(data_dir, source_dir, source_name, class_directories, number_of_points, extension):
     dest_dir = os.path.join(data_dir, "SdfSamples", source_name)
 
     print(
@@ -64,8 +59,6 @@ def preprocess(data_dir, source_dir, source_name, split_filename, number_of_poin
     ext = extension
 
     append_data_source_map(data_dir, source_name, source_dir)
-
-    class_directories = split[source_name]
 
     meshes_targets_and_specific_args = []
 
