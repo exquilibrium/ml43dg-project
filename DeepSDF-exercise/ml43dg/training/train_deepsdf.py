@@ -70,16 +70,22 @@ def train(model, latent_vectors, colour_latent_vectors, train_dataloader, device
             # reshape points and sdf for forward pass
             points = batch['points'].reshape((num_points_per_batch, 3))
             sdf = batch['sdf'].reshape((num_points_per_batch, 1))
+            viewing_dirs = batch['viewing_dirs'].reshape((num_points_per_batch, 2))
             colours = batch['colors'].reshape((num_points_per_batch, 3))
 
             # perform forward pass
-            x_in = torch.cat([batch_latent_vectors, batch_colour_latent_vectors, points, colours], dim=1)
-            predicted_sdf = model(x_in)
+            #x_in = torch.cat([batch_latent_vectors, batch_colour_latent_vectors, points, viewing_dirs], dim=1)
+            predicted_sdf, predicted_colour = model(points, viewing_dirs, batch_latent_vectors, batch_colour_latent_vectors)
             # truncate predicted sdf between -0.1 and 0.1
             predicted_sdf = torch.clamp(predicted_sdf, -0.1, 0.1)
 
             # compute loss
-            loss = loss_criterion(predicted_sdf, sdf)
+            sdf_loss = loss_criterion(predicted_sdf, sdf)
+
+            # colour loss
+            colour_loss = loss_criterion(predicted_colour, colours)
+
+            loss = sdf_loss + colour_loss
 
             # regularize latent codes
             code_regularization = torch.mean(torch.norm(batch_latent_vectors, dim=1)) * config['lambda_code_regularization']
@@ -118,6 +124,7 @@ def train(model, latent_vectors, colour_latent_vectors, train_dataloader, device
                 for latent_idx in range(latent_vectors_for_vis.shape[0]):
                     # create mesh and save to disk
                     evaluate_model_on_grid(model, latent_vectors_for_vis[latent_idx, :], colour_latent_vectors_for_vis[latent_idx, :], device, 64, f'ml43dg/runs/{config["experiment_name"]}/meshes/{iteration:05d}_{latent_idx:03d}.obj')
+                    print(f"Saved mesh to ml43dg/runs/{config['experiment_name']}/meshes/{iteration:05d}_{latent_idx:03d}.obj")
                 # set model back to train
                 model.train()
 

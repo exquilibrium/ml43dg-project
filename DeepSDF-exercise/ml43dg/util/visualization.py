@@ -7,7 +7,7 @@ from matplotlib import cm, colors
 import trimesh
 
 
-def visualize_mesh(vertices, faces, flip_axes=False):
+def visualize_mesh(vertices, faces, colors=None, flip_axes=False):
     vertices = np.array(vertices)
     plot = k3d.plot(name='mesh', grid_visible=False, grid=(-0.55, -0.55, -0.55, 0.55, 0.55, 0.55))
     if flip_axes:

@@ -17,26 +17,38 @@ def evaluate_model_on_grid(model, latent_code, colour_latent_code, device, grid_
     grid_x, grid_y, grid_z = grid_x.flatten(), grid_y.flatten(), grid_z.flatten()
     stacked = torch.from_numpy(np.hstack((grid_x[:, np.newaxis], grid_y[:, np.newaxis], grid_z[:, np.newaxis]))).float().to(device)
     stacked_split = torch.split(stacked, 32 ** 3, dim=0)
+
+    # using default viewing direction
+    viewing_directions = torch.tensor([[0., 0.]]).to(device)
+    viewing_directions = viewing_directions.expand(stacked_split[0].shape[0], -1)
+
     sdf_values = []
-    for points, colours in zip(stacked_split, stacked_split):
+    colour_values = []
+
+    for points in stacked_split:
         with torch.no_grad():
-            sdf = model(torch.cat([latent_code.unsqueeze(0).expand(points.shape[0], -1), colour_latent_code.unsqueeze(0).expand(colours.shape[0], -1), colours, points], 1))
+            sdf, colour = model(points, viewing_directions, latent_code.unsqueeze(0).expand(points.shape[0], -1), colour_latent_code.unsqueeze(0).expand(points.shape[0], -1))
         sdf_values.append(sdf.detach().cpu())
+        colour_values.append(colour.detach().cpu())
+
     sdf_values = torch.cat(sdf_values, dim=0).numpy().reshape((grid_resolution, grid_resolution, grid_resolution))
+
     if 0 < sdf_values.min() or 0 > sdf_values.max():
-        # TODO: figure out why this is happening
-        # Do the sdf values need to be truncated?
-        # or is it lack of training?
-        print(f"max sdf value: {sdf_values.max()}")
-        print(f"min sdf value: {sdf_values.min()}")
-        vertices, faces = [], []
+        vertices, faces, vertex_colours = [], [], []
     else:
         vertices, faces, _, _ = marching_cubes(sdf_values, level=0)
+
+        colour_values = torch.cat(colour_values, dim=0).numpy().reshape((grid_resolution, grid_resolution, grid_resolution, 3))
+        # Rescale colour values from [0, 1] to [0, 255]
+        colour_values = (colour_values * 255).astype(np.uint8)
+        vertex_colours = colour_values[vertices[:, 0].astype(int), vertices[:, 1].astype(int), vertices[:, 2].astype(int)]
+        # Add empty alpha channel
+        vertex_colours = np.hstack((vertex_colours, np.ones((vertex_colours.shape[0], 1))))
     if export_path is not None:
         Path(export_path).parent.mkdir(exist_ok=True)
-        # TODO: also export mesh colours interpolated from the latent code
-        trimesh.Trimesh(vertices=vertices, faces=faces).export(export_path)
-    return vertices, faces
+        trimesh.Trimesh(vertices=vertices, faces=faces, vertex_colors=vertex_colours).export(export_path)
+    return vertices, faces, vertex_colours
+
 
 
 def show_gif(fname):

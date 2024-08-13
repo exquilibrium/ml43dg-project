@@ -11,7 +11,7 @@ class Objaverse(torch.utils.data.Dataset):
     Dataset for loading deep sdf training samples from Objaverse dataset
     """
 
-    dataset_path = Path("ml43dg/data/objaverse/chairs")
+    dataset_path = Path("ml43dg/data/objaverse/")
 
     def __init__(self, num_sample_points, split):
         """
@@ -21,7 +21,7 @@ class Objaverse(torch.utils.data.Dataset):
         assert split in ['train', 'val', 'overfit']
 
         self.num_sample_points = num_sample_points
-        self.items = Path(f"ml43dg/data/splits/chairs/{split}.txt").read_text().splitlines()
+        self.items = Path(f"ml43dg/data/splits/objaverse/{split}.txt").read_text().splitlines()
 
     def __getitem__(self, index):
         """
@@ -43,19 +43,22 @@ class Objaverse(torch.utils.data.Dataset):
 
         points = sdf_samples[:, :3]
         sdf = sdf_samples[:, 3:4]
-        colors = sdf_samples[:, 4:]
+        colors = sdf_samples[:, 4:7]
         # remove alpha channel from colours
         colors = colors[:, :3]
+        viewing_dirs = sdf_samples[:, 7:]
 
         # truncate sdf values
         sdf_clamped = torch.clamp(sdf, -0.1, 0.1)
 
         return {
-            "name": item,  # identifier of the shape
+            "name": item.split("/")[1],  # identifier of the shape
+            "class": item.split("/")[0],  # class of the shape
             "indices": index,  # index parameter
             "points": points,  # points, a tensor with shape num_sample_points x 3,
             "colors": colors, # RGB colors, a tensor with shape num_sample_points x 4
-            "sdf": sdf_clamped  # sdf values, a tensor with shape num_sample_points x 1
+            "sdf": sdf_clamped,  # sdf values, a tensor with shape num_sample_points x 1
+            "viewing_dirs": viewing_dirs  # viewing directions composed of theta and phi Euler angles, a tensor with shape num_sample_points x 2
         }
 
     def __len__(self):
@@ -73,6 +76,8 @@ class Objaverse(torch.utils.data.Dataset):
         batch['points'] = batch['points'].to(device)
         batch['sdf'] = batch['sdf'].to(device)
         batch['indices'] = batch['indices'].to(device)
+        batch['colors'] = batch['colors'].to(device)
+        batch['viewing_dirs'] = batch['viewing_dirs'].to(device)
 
     def get_sdf_samples(self, path_to_sdf):
         """
@@ -120,8 +125,11 @@ class Objaverse(torch.utils.data.Dataset):
         # trucate sdf values
         sdf = torch.clamp(samples[:, 3:4], -0.1, 0.1)
 
-        colors = samples[:, 4:]
+        colors = samples[:, 4:7]
+        # remove alpha channel from colours
+        colors = colors[:, :3]
+        viewing_dirs = samples[:, 7:]
 
-        return points, sdf, colors
+        return points, sdf, colors, viewing_dirs
 
 

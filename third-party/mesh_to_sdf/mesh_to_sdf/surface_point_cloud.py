@@ -151,7 +151,7 @@ class SurfacePointCloud:
         if return_gradients:
             return query_points, sdf, colors, gradients, viewing_directions
         else:
-            return query_points, sdf, colors, viewing_dirs
+            return query_points, sdf, colors, viewing_directions
 
     def show(self):
         scene = pyrender.Scene()
