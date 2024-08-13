@@ -14,11 +14,12 @@ class BadMeshException(Exception):
     pass
 
 class SurfacePointCloud:
-    def __init__(self, mesh, points, normals=None, colors=None, scans=None):
+    def __init__(self, mesh, points, viewing_dirs=None, normals=None, colors=None, scans=None):
         self.mesh = mesh
         self.points = points
         self.colors = colors
         self.normals = normals
+        self.viewing_dirs = viewing_dirs
         self.scans = scans
 
         self.kd_tree = KDTree(points)
@@ -33,7 +34,7 @@ class SurfacePointCloud:
     def get_random_colored_surface_points(self, count, use_scans=True):
         if use_scans:
             indices = np.random.choice(self.points.shape[0], count)
-            return self.points[indices, :], indices, self.colors[indices, :]
+            return self.points[indices, :], indices, self.colors[indices, :], self.viewing_dirs[indices, :]
         else:
             points, indices, colors = trimesh.sample.sample_surface(self.mesh, count, sample_color=True)
             # return only the rgb channels, not the fourth and final alpha channel
@@ -116,11 +117,14 @@ class SurfacePointCloud:
         query_points = []
         surface_sample_count = int(number_of_points * 47 / 50) // 2
         colors = np.zeros((number_of_points, 3))
+        viewing_directions = np.zeros((number_of_points, 2))
         #surface_points = self.get_random_surface_points(surface_sample_count, use_scans=use_scans)
-        surface_points, _, cols = self.get_random_colored_surface_points(surface_sample_count, use_scans=use_scans)
+        surface_points, _, cols, viewing_dirs = self.get_random_colored_surface_points(surface_sample_count, use_scans=use_scans)
         
         cols = np.tile(cols, (2, 1))
         colors[:cols.shape[0], :] = cols
+        viewing_dirs = np.tile(viewing_dirs, (2, 1))
+        viewing_directions[:viewing_dirs.shape[0], :] = viewing_dirs
 
         query_points.append(surface_points + np.random.normal(scale=0.0025, size=(surface_sample_count, 3)))
         query_points.append(surface_points + np.random.normal(scale=0.00025, size=(surface_sample_count, 3)))
@@ -145,9 +149,9 @@ class SurfacePointCloud:
                 raise BadMeshException()
 
         if return_gradients:
-            return query_points, sdf, colors, gradients
+            return query_points, sdf, colors, gradients, viewing_directions
         else:
-            return query_points, sdf, colors
+            return query_points, sdf, colors, viewing_dirs
 
     def show(self):
         scene = pyrender.Scene()
@@ -177,6 +181,8 @@ def create_from_scans(mesh, bounding_radius=1, scan_count=100, scan_resolution=4
         camera_transform = get_camera_transform_looking_at_origin(phi, theta, camera_distance=2 * bounding_radius)
         scans.append(Scan(mesh,
             camera_transform=camera_transform,
+            phi=phi,
+            theta=theta,
             resolution=scan_resolution,
             calculate_normals=calculate_normals,
             fov=1.0472,
@@ -188,6 +194,7 @@ def create_from_scans(mesh, bounding_radius=1, scan_count=100, scan_resolution=4
         points=np.concatenate([scan.points for scan in scans], axis=0),
         normals=np.concatenate([scan.normals for scan in scans], axis=0) if calculate_normals else None,
         colors=np.concatenate([scan.colours for scan in scans], axis=0),
+        viewing_dirs = np.concatenate([scan.viewing_directions for scan in scans], axis=0),
         scans=scans
     )
 

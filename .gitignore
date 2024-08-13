@@ -169,3 +169,6 @@ cython_debug/
 DeepSDF-exercise/ml43dg/data/splits/chairs/overfit.txt
 DeepSDF-exercise/ml43dg/data/splits/chairs/train.txt
 DeepSDF-exercise/ml43dg/data/splits/chairs/val.txt
+DeepSDF-exercise/ml43dg/data/splits/chairs/overfit.txt
+DeepSDF-exercise/ml43dg/data/splits/chairs/train.txt
+DeepSDF-exercise/ml43dg/data/splits/chairs/val.txt
