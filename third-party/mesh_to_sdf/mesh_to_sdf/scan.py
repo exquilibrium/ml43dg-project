@@ -47,7 +47,7 @@ This renders a normal and depth buffer and reprojects it into a point cloud.
 The resulting point cloud contains a point for every pixel in the buffer that hit the model.
 '''
 class Scan():
-    def __init__(self, mesh, camera_transform, resolution=400, calculate_normals=True, fov=1, z_near=0.1, z_far=10):
+    def __init__(self, mesh, camera_transform, phi, theta, resolution=400, calculate_normals=True, fov=1, z_near=0.1, z_far=10):
         self.camera_transform = camera_transform
         self.camera_position = np.matmul(self.camera_transform, np.array([0, 0, 0, 1]))[:3]
         self.resolution = resolution
@@ -76,6 +76,11 @@ class Scan():
         points = np.matmul(points, clipping_to_world.transpose())
         points /= points[:, 3][:, np.newaxis]
         self.points = points[:, :3]
+
+        self.colours = color[indices[:, 0], indices[:, 1]] / 255
+
+        # List of viewing direction (phi, theta) for each point
+        self.viewing_directions = np.array([[phi, theta] for _ in range(points.shape[0])])
 
         if calculate_normals:
             normals = color[indices[:, 0], indices[:, 1]] / 255 * 2 - 1

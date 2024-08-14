@@ -21,7 +21,7 @@ class Objaverse(torch.utils.data.Dataset):
         assert split in ['train', 'val', 'overfit']
 
         self.num_sample_points = num_sample_points
-        self.items = Path(f"ml43dg/data/splits/{split}.txt").read_text().splitlines()
+        self.items = Path(f"./ml43dg/data/splits/objaverse/{split}.txt").read_text().splitlines()
 
     def __getitem__(self, index):
         """
@@ -31,22 +31,27 @@ class Objaverse(torch.utils.data.Dataset):
                  "indices": index parameter
                  "points": a num_sample_points x 3  pytorch float32 tensor containing sampled point coordinates
                  "sdf", a num_sample_points x 1 pytorch float32 tensor containing sdf values for the sampled points
+                 "viewing_dirs", a num_sample_points x 2 pytorch float32 tensor containing viewing directions for the sampled points
+                 "class_label", an integer label for the class of the shape
+
         """
         # get uid at index
         filename = self.items[index]
-        item_class = filename.split('\\')[0]
-        item = filename.split('\\')[1]
+        item_class = filename.split(r'/')[0]
+        item = filename.split(r'/')[1]
+
         # get path to sdf data
-        sdf_samples_path = Objaverse.dataset_path / item_class / item / "sdf.npz"
+        sdf_samples_path = Objaverse.dataset_path / filename / "sdf.npz"
 
         # read points and their sdf values from disk
         sdf_samples = self.get_sdf_samples(sdf_samples_path)
 
         points = sdf_samples[:, :3]
         sdf = sdf_samples[:, 3:4]
-        colors = sdf_samples[:, 4:]
+        colors = sdf_samples[:, 4:7]
         # remove alpha channel from colours
         colors = colors[:, :3]
+        viewing_dirs = sdf_samples[:, 7:]
 
         # truncate sdf values
         sdf_clamped = torch.clamp(sdf, -0.1, 0.1)
@@ -57,7 +62,8 @@ class Objaverse(torch.utils.data.Dataset):
             "points": points,  # points, a tensor with shape num_sample_points x 3,
             "colors": colors, # RGB colors, a tensor with shape num_sample_points x 4
             "sdf": sdf_clamped,  # sdf values, a tensor with shape num_sample_points x 1
-            "class_label": item_class
+            "viewing_dirs": viewing_dirs,  # viewing directions composed of theta and phi Euler angles, a tensor with shape num_sample_points x 2
+            "class_label": item_class # class label
         }
 
     def __len__(self):
@@ -76,6 +82,7 @@ class Objaverse(torch.utils.data.Dataset):
         batch['sdf'] = batch['sdf'].to(device)
         batch['indices'] = batch['indices'].to(device)
         batch['colors'] = batch['colors'].to(device)
+        batch['viewing_dirs'] = batch['viewing_dirs'].to(device)
 
     def get_sdf_samples(self, path_to_sdf):
         """
@@ -100,10 +107,10 @@ class Objaverse(torch.utils.data.Dataset):
     def get_mesh(shape_id):
         """
         Utility method for loading a mesh from disk given shape identifier
-        :param shape_id: shape identifier for ShapeNet object
+        :param shape_id: shape identifier for Objaverse object
         :return: trimesh object representing the mesh
         """
-        return trimesh.load(Objaverse.dataset_path / shape_id / "mesh.obj", force='mesh')
+        return trimesh.load(Objaverse.dataset_path / shape_id / "mesh.obj", force='mesh', process=True)
     
 
     @staticmethod
@@ -123,9 +130,26 @@ class Objaverse(torch.utils.data.Dataset):
         # trucate sdf values
         sdf = torch.clamp(samples[:, 3:4], -0.1, 0.1)
 
-        colors = samples[:, 4:]
+        colors = samples[:, 4:7]
+        # remove alpha channel from colours
+        colors = colors[:, :3]
+        viewing_dirs = samples[:, 7:]
 
-        return points, sdf, colors
+        return points, sdf, colors, viewing_dirs
+
+    @staticmethod
+    def get_class_id(class_name):
+        match class_name:
+            case "chairs":
+                return 1
+            case "sofas":
+                return 2
+            case "tables":
+                return 3
+            case "vases":
+                return 4
+            case _:
+                return 0
 
 
     @staticmethod

@@ -51,7 +51,7 @@ class CustomShaderCache():
 def render_normal_and_depth_buffers(mesh, camera, camera_transform, resolution):
     global suppress_multisampling
     suppress_multisampling = True
-    scene = pyrender.Scene()
+    scene = pyrender.Scene(ambient_light=[1.0, 1.0, 1.0, 1.0])
     scene.add(pyrender.Mesh.from_trimesh(mesh, smooth = False))
     scene.add(camera, pose=camera_transform)
 
