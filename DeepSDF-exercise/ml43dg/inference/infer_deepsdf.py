@@ -9,7 +9,7 @@ from ..util.misc import evaluate_model_on_grid
 
 class InferenceHandlerDeepSDF:
 
-    def __init__(self, latent_code_length, color_latent_code_length, experiment, device):
+    def __init__(self, latent_code_length, color_latent_code_length, one_hot_encoding_length, experiment, device):
         """
         :param latent_code_length: latent code length for the trained DeepSDF model
         :param experiment: path to experiment folder for the trained model; should contain "model_best.ckpt" and "latent_best.ckpt"
@@ -17,6 +17,7 @@ class InferenceHandlerDeepSDF:
         """
         self.latent_code_length = latent_code_length
         self.color_latent_code_length = color_latent_code_length
+        self.one_hot_encoding_length = one_hot_encoding_length
         self.experiment = Path(experiment)
         self.device = device
         self.truncation_distance = 0.01
@@ -26,7 +27,7 @@ class InferenceHandlerDeepSDF:
         """
         :return: trained deep sdf model loaded from disk
         """
-        model = DeepSDFDecoder(self.latent_code_length, self.color_latent_code_length)
+        model = DeepSDFDecoder(self.latent_code_length, self.color_latent_code_length, self.one_hot_encoding_length)
         model.load_state_dict(torch.load(self.experiment / "model_best.ckpt", map_location='cpu'))
         model.eval()
         model.to(self.device)
@@ -42,7 +43,7 @@ class InferenceHandlerDeepSDF:
         colour_latent_codes.to(self.device)
         return latent_codes, colour_latent_codes
 
-    def reconstruct(self, points, sdf, colours, viewing_dirs, num_optimization_iters):
+    def reconstruct(self, points, sdf, colours, viewing_dirs, class_label, num_optimization_iters):
         """
         Reconstructs by optimizing a latent code that best represents the input sdf observations
         :param points: all observed points for the shape which needs to be reconstructed
@@ -83,12 +84,15 @@ class InferenceHandlerDeepSDF:
             batch_colours = batch_colours.to(self.device)
             batch_viewing_dirs = batch_viewing_dirs.to(self.device)
 
+            class_labels = torch.tensor(Objaverse.get_class_id(class_label)).to(self.device)
+            class_label_one_hot = torch.nn.functional.one_hot(class_labels, num_classes=4).float().unsqueeze(0).expand(self.num_samples, -1)
+
             # same latent code is used per point, therefore expand it to have same length as batch points
             latent_codes = latent.expand(self.num_samples, -1)
             latent_col_codes = latent_col.expand(self.num_samples, -1)
 
             # forward pass with latent_codes and batch_points
-            predicted_sdf, predicted_colours = model(batch_points, batch_viewing_dirs, latent_codes, latent_col_codes)
+            predicted_sdf, predicted_colours = model(batch_points, batch_viewing_dirs, latent_codes, latent_col_codes, class_label_one_hot)
 
             # truncate predicted sdf between -0.1, 0.1
             predicted_sdf = predicted_sdf.clamp(-0.1, 0.1)
