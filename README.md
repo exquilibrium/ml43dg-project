@@ -8,5 +8,5 @@ We propose the following modifications to the DeepSDF architecture:
 
 The entrypoint for the code implementation can be found [here](https://github.com/exquilibrium/ml43dg-project/blob/main/DeepSDF-exercise/ml43dg_project.ipynb).
 
-The report can be found [here]().
+The report can be found [here](https://github.com/exquilibrium/ml43dg-project/blob/main/DeepSDF.pdf).
 
