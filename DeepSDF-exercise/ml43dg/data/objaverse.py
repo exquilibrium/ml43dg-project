@@ -21,7 +21,7 @@ class Objaverse(torch.utils.data.Dataset):
         assert split in ['train', 'val', 'overfit']
 
         self.num_sample_points = num_sample_points
-        self.items = Path(f"ml43dg/data/splits/objaverse/{split}.txt").read_text().splitlines()
+        self.items = Path(f"./ml43dg/data/splits/objaverse/{split}.txt").read_text().splitlines()
 
     def __getitem__(self, index):
         """
@@ -31,12 +31,17 @@ class Objaverse(torch.utils.data.Dataset):
                  "indices": index parameter
                  "points": a num_sample_points x 3  pytorch float32 tensor containing sampled point coordinates
                  "sdf", a num_sample_points x 1 pytorch float32 tensor containing sdf values for the sampled points
+                 "viewing_dirs", a num_sample_points x 2 pytorch float32 tensor containing viewing directions for the sampled points
+                 "class_label", an integer label for the class of the shape
+
         """
         # get uid at index
-        item = self.items[index]
+        filename = self.items[index]
+        item_class = filename.split(r'/')[0]
+        item = filename.split(r'/')[1]
 
         # get path to sdf data
-        sdf_samples_path = Objaverse.dataset_path / item / "sdf.npz"
+        sdf_samples_path = Objaverse.dataset_path / filename / "sdf.npz"
 
         # read points and their sdf values from disk
         sdf_samples = self.get_sdf_samples(sdf_samples_path)
@@ -52,13 +57,13 @@ class Objaverse(torch.utils.data.Dataset):
         sdf_clamped = torch.clamp(sdf, -0.1, 0.1)
 
         return {
-            "name": item.split("/")[1],  # identifier of the shape
-            "class": item.split("/")[0],  # class of the shape
+            "name": item,  # identifier of the shape
             "indices": index,  # index parameter
             "points": points,  # points, a tensor with shape num_sample_points x 3,
             "colors": colors, # RGB colors, a tensor with shape num_sample_points x 4
             "sdf": sdf_clamped,  # sdf values, a tensor with shape num_sample_points x 1
-            "viewing_dirs": viewing_dirs  # viewing directions composed of theta and phi Euler angles, a tensor with shape num_sample_points x 2
+            "viewing_dirs": viewing_dirs,  # viewing directions composed of theta and phi Euler angles, a tensor with shape num_sample_points x 2
+            "class_label": item_class # class label
         }
 
     def __len__(self):
@@ -102,10 +107,10 @@ class Objaverse(torch.utils.data.Dataset):
     def get_mesh(shape_id):
         """
         Utility method for loading a mesh from disk given shape identifier
-        :param shape_id: shape identifier for ShapeNet object
+        :param shape_id: shape identifier for Objaverse object
         :return: trimesh object representing the mesh
         """
-        return trimesh.load(Objaverse.dataset_path / shape_id / "mesh.obj", force='mesh')
+        return trimesh.load(Objaverse.dataset_path / shape_id / "mesh.obj", force='mesh', process=True)
     
 
     @staticmethod
@@ -131,5 +136,19 @@ class Objaverse(torch.utils.data.Dataset):
         viewing_dirs = samples[:, 7:]
 
         return points, sdf, colors, viewing_dirs
+
+    @staticmethod
+    def get_class_id(class_name):
+        match class_name:
+            case "chairs":
+                return 1
+            case "sofas":
+                return 2
+            case "tables":
+                return 3
+            case "vases":
+                return 4
+            case _:
+                return 0
 
 

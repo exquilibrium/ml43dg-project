@@ -4,24 +4,24 @@ import torch
 
 class DeepSDFDecoder(nn.Module):
 
-    def __init__(self, shape_latent_size, colour_latent_size):
+    def __init__(self, shape_latent_size, colour_latent_size, one_hot_size):
         """
         :param latent_size: latent code vector length
         """
         super().__init__()
         dropout_prob = 0.2
 
-        self.wnll1 = nn.utils.weight_norm(nn.Linear(shape_latent_size+3, 512))
+        self.wnll1 = nn.utils.weight_norm(nn.Linear(3 + shape_latent_size + one_hot_size, 512))
         self.wnll2 = nn.utils.weight_norm(nn.Linear(512,512))
         self.wnll3 = nn.utils.weight_norm(nn.Linear(512,512))
-        self.wnll4 = nn.utils.weight_norm(nn.Linear(512,512-shape_latent_size-3))
+        self.wnll4 = nn.utils.weight_norm(nn.Linear(512, 512-shape_latent_size - 3 - one_hot_size))
 
         self.wnll5 = nn.utils.weight_norm(nn.Linear(512,512))
         self.wnll6 = nn.utils.weight_norm(nn.Linear(512,512))
         self.wnll7 = nn.utils.weight_norm(nn.Linear(512,512))
         self.wnll8 = nn.utils.weight_norm(nn.Linear(512,512))
 
-        self.wnll5_col = nn.utils.weight_norm(nn.Linear(512+colour_latent_size+2, 512))
+        self.wnll5_col = nn.utils.weight_norm(nn.Linear(512 + colour_latent_size + 2, 512))
 
         self.fc = nn.Linear(512,1)
         # Sigmoid to ensure output is in [0,1]
@@ -31,14 +31,20 @@ class DeepSDFDecoder(nn.Module):
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout_prob)
 
-    def forward(self, point, viewing_direction, shape_latent_code, colour_latent_code):
+    def forward(self, point, viewing_direction, shape_latent_code, colour_latent_code, class_label_one_hot):
         """
         :param point: B x 3 tensor of point coordinates
         :param viewing_direction: B x 2 tensor of viewing direction
-        :param latent_code: B x latent_size tensor of latent codes
+        :param shape_latent_code: B x shape_latent_size tensor of shape latent codes
+        :param colour_latent_code: B x color_latent_size tensor of colour latent codes
+        :param class_label_one_hot: B x num_classes tensor of one-hot class labels
+
         :return: B x 1 tensor
         """
-        x_in = torch.cat([point, shape_latent_code], dim=1)
+        point = point.float()
+        viewing_direction = viewing_direction.float()
+
+        x_in = torch.cat([point, shape_latent_code, class_label_one_hot], dim=1)
         x = self.dropout(self.relu(self.wnll1(x_in)))
         x = self.dropout(self.relu(self.wnll2(x)))
         x = self.dropout(self.relu(self.wnll3(x)))

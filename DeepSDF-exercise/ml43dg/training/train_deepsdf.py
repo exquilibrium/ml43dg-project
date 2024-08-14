@@ -66,16 +66,16 @@ def train(model, latent_vectors, colour_latent_vectors, train_dataloader, device
             batch_colour_latent_vectors = colour_latent_vectors(batch['indices']).unsqueeze(1).expand(-1, batch['points'].shape[1], -1)
             batch_colour_latent_vectors = batch_colour_latent_vectors.reshape((num_points_per_batch, config['color_latent_code_length']))
 
-
-            # reshape points and sdf for forward pass
+            # reshape inputs for forward pass
             points = batch['points'].reshape((num_points_per_batch, 3))
             sdf = batch['sdf'].reshape((num_points_per_batch, 1))
             viewing_dirs = batch['viewing_dirs'].reshape((num_points_per_batch, 2))
             colours = batch['colors'].reshape((num_points_per_batch, 3))
+            class_label = torch.tensor(Objaverse.get_class_id(batch["class_label"])).to(device)
+            class_label_one_hot = torch.nn.functional.one_hot(class_label, num_classes=4).float().unsqueeze(0).expand(num_points_per_batch, -1)
 
             # perform forward pass
-            #x_in = torch.cat([batch_latent_vectors, batch_colour_latent_vectors, points, viewing_dirs], dim=1)
-            predicted_sdf, predicted_colour = model(points, viewing_dirs, batch_latent_vectors, batch_colour_latent_vectors)
+            predicted_sdf, predicted_colour = model(points, viewing_dirs, batch_latent_vectors, batch_colour_latent_vectors, class_label_one_hot)
             # truncate predicted sdf between -0.1 and 0.1
             predicted_sdf = torch.clamp(predicted_sdf, -0.1, 0.1)
 
@@ -171,7 +171,7 @@ def main(config):
     )
 
     # Instantiate model
-    model = DeepSDFDecoder(config['latent_code_length'], config['color_latent_code_length'])
+    model = DeepSDFDecoder(config['latent_code_length'], config['color_latent_code_length'], 4)
     # Instantiate latent vectors for each training shape
     latent_vectors = torch.nn.Embedding(len(train_dataset), config['latent_code_length'], max_norm=1.0)
     colour_latent_vectors = torch.nn.Embedding(len(train_dataset), config['color_latent_code_length'], max_norm=1.0)

@@ -9,6 +9,7 @@ import json
 import logging
 import trimesh
 import numpy as np
+from pathlib import Path
 
 def append_data_source_map(data_dir, name, source):
     data_source_map_filename = os.path.join(data_dir, ".datasources.json")
@@ -76,13 +77,14 @@ def preprocess(data_dir, source_dir, source_name, class_directories, number_of_p
             os.mkdir(target_dir)
 
         for instance_id in instance_ids:
+            if not os.path.isdir(os.path.join(target_dir, instance_id)):
+                os.mkdiros.path.join(target_dir, instance_id)
 
-            processed_filepath = os.path.join(target_dir, instance_id + ".npz")
+            processed_filepath = os.path.join(target_dir, instance_id, "sdf.npz")
 
             try:
 
-                mesh_filenames = list(glob.iglob(os.path.join(class_path , instance_id + ext)))
-                print(os.path.join(class_path,instance_id + ext))
+                mesh_filenames = list(glob.iglob(os.path.join(class_path , instance_id, "mesh" + ext)))
                 if len(mesh_filenames) == 0:
                     raise NoMeshFileError()
                 elif len(mesh_filenames) > 1:

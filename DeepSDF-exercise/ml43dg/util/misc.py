@@ -22,12 +22,17 @@ def evaluate_model_on_grid(model, latent_code, colour_latent_code, device, grid_
     viewing_directions = torch.tensor([[0., 0.]]).to(device)
     viewing_directions = viewing_directions.expand(stacked_split[0].shape[0], -1)
 
+    # use empty class label one-hot encoding (4 classes)
+    class_label_one_hot = torch.zeros(4).to(device)
+    class_label_one_hot = class_label_one_hot.unsqueeze(0).expand(stacked_split[0].shape[0], -1)
+
+
     sdf_values = []
     colour_values = []
 
     for points in stacked_split:
         with torch.no_grad():
-            sdf, colour = model(points, viewing_directions, latent_code.unsqueeze(0).expand(points.shape[0], -1), colour_latent_code.unsqueeze(0).expand(points.shape[0], -1))
+            sdf, colour = model(points, viewing_directions, latent_code.unsqueeze(0).expand(points.shape[0], -1), colour_latent_code.unsqueeze(0).expand(points.shape[0], -1), class_label_one_hot)
         sdf_values.append(sdf.detach().cpu())
         colour_values.append(colour.detach().cpu())
 
@@ -43,7 +48,7 @@ def evaluate_model_on_grid(model, latent_code, colour_latent_code, device, grid_
         colour_values = (colour_values * 255).astype(np.uint8)
         vertex_colours = colour_values[vertices[:, 0].astype(int), vertices[:, 1].astype(int), vertices[:, 2].astype(int)]
         # Add empty alpha channel
-        vertex_colours = np.hstack((vertex_colours, np.ones((vertex_colours.shape[0], 1))))
+        # vertex_colours = np.hstack((vertex_colours, np.ones((vertex_colours.shape[0], 1))))
     if export_path is not None:
         Path(export_path).parent.mkdir(exist_ok=True)
         trimesh.Trimesh(vertices=vertices, faces=faces, vertex_colors=vertex_colours).export(export_path)

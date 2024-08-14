@@ -1,5 +1,6 @@
 DeepSDF-exercise/ml43dg/data/sdf_sofas/
 DeepSDF-exercise/ml43dg/data/objaverse/*/
+DeepSDF-exercise/ml43dg/data/preprocessed/
 DeepSDF-exercise/ml43dg/runs/
 
 .DS_STORE
@@ -11,6 +12,10 @@ __pycache__/
 
 # C extensions
 *.so
+
+# All files in .conda
+.conda/
+
 
 # Distribution / packaging
 .Python
